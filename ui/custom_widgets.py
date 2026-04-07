@@ -1,8 +1,13 @@
-from PySide6.QtWidgets import QLabel, QApplication
-from PySide6.QtCore import Signal, Qt, QRect, QPoint, QSize
-from PySide6.QtGui import QPainter, QPen, QColor, QPolygon, QPixmap
+from PySide6.QtWidgets import QLabel, QApplication, QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout
+from PySide6.QtCore import Signal, Qt, QRect, QPoint
+from PySide6.QtGui import QPainter, QPen, QColor, QPolygon, QPixmap, QIcon
+
+# 引入配置中的调色板
+from config.settings import THEME_PALETTES
+from config.icons import icon_path
 
 class InteractableLabel(QLabel):
+    # ... (这部分 InteractableLabel 代码保持完全不变，省略以节省篇幅，请保留您原有的代码) ...
     selection_changed = Signal(int, int, int, int)
     polygon_changed = Signal(list)
     zoom_changed = Signal(float)
@@ -11,19 +16,16 @@ class InteractableLabel(QLabel):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setAlignment(Qt.AlignCenter)
-        
         self._original_pixmap = None
         self.scale_factor = 1.0
-        
         self.mode = "rect" 
         self.is_drawing = False
         self.start_pos = None
-        
         self.rect_selection = QRect(0, 0, 0, 0)
         self.poly_points = []
         self.shape_type = 0
         self.w_bottom = 0 
-        self.trap_align = 0 # [新增] 对齐方式: 0=居中, 1=左直角, 2=右直角
+        self.trap_align = 0 
 
     def set_original_image(self, pixmap):
         self._original_pixmap = pixmap
@@ -36,7 +38,6 @@ class InteractableLabel(QLabel):
         self.poly_points = [] 
         self.update() 
 
-    # [新增] trap_align 参数
     def set_shape_params(self, shape_type, x, y, w, h, w_bottom=0, trap_align=0):
         self.shape_type = shape_type
         self.rect_selection = QRect(x, y, w, h)
@@ -113,96 +114,161 @@ class InteractableLabel(QLabel):
     def paintEvent(self, event):
         super().paintEvent(event)
         if self._original_pixmap is None: return
-
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        # 预览区叠加线稿：关闭 AA，避免部分 Qt 版本在频繁重绘时触发 QPainter 状态栈告警
         painter.scale(self.scale_factor, self.scale_factor)
         line_w = max(1.0, 2.0 / self.scale_factor)
         point_r = max(2.0, 4.0 / self.scale_factor)
-
         x, y, w_box, h = self.rect_selection.getRect()
         pen = QPen(QColor(0, 255, 0), line_w)
         painter.setPen(pen)
-
         if self.mode == "rect":
-            if self.shape_type == 0: # Rect
+            if self.shape_type == 0: 
                 painter.drawRect(x, y, w_box, h)
-            
-            elif self.shape_type == 1: # Trapezoid
-                w_top = w_box
-                w_bot = self.w_bottom
-                max_w = max(w_top, w_bot)
-                
-                # === 核心修改：根据对齐方式计算绘图顶点 ===
-                
-                # 默认：左直角 (align=1)
-                x1, x2 = x, x + w_top
-                x3, x4 = x + w_bot, x
-                
-                if self.trap_align == 0: # 居中
-                    x1 = x + (max_w - w_top) // 2
-                    x2 = x1 + w_top
-                    x3 = x + (max_w - w_bot) // 2 + w_bot
-                    x4 = x + (max_w - w_bot) // 2
-                    
-                elif self.trap_align == 2: # 右直角
-                    # 右边是直的，靠右对齐
-                    x2 = x + max_w
-                    x1 = x2 - w_top
-                    x3 = x + max_w
-                    x4 = x3 - w_bot
-
-                y1, y2 = y, y
-                y3, y4 = y + h, y + h
-
-                # 绘制外接矩形 (虚线)
-                pen_dash = QPen(QColor(255, 255, 0, 150), line_w, Qt.DashLine)
-                painter.setPen(pen_dash)
-                painter.drawRect(x, y, max_w, h)
-
-                # 绘制梯形实体
-                painter.setPen(QPen(QColor(0, 255, 0), line_w))
-                painter.drawPolygon(QPolygon([QPoint(x1, y1), QPoint(x2, y2), QPoint(x3, y3), QPoint(x4, y4)]))
-
-            elif self.shape_type == 2: # Tri
+            elif self.shape_type == 1: 
+                w_top = w_box; w_bot = self.w_bottom; max_w = max(w_top, w_bot)
+                x1, x2 = x, x + w_top; x3, x4 = x + w_bot, x
+                if self.trap_align == 0:
+                    x1 = x + (max_w - w_top) // 2; x2 = x1 + w_top; x3 = x + (max_w - w_bot) // 2 + w_bot; x4 = x + (max_w - w_bot) // 2
+                elif self.trap_align == 2:
+                    x2 = x + max_w; x1 = x2 - w_top; x3 = x + max_w; x4 = x3 - w_bot
+                y1, y2 = y, y; y3, y4 = y + h, y + h
+                pen_dash = QPen(QColor(255, 255, 0, 150), line_w, Qt.DashLine); painter.setPen(pen_dash); painter.drawRect(x, y, max_w, h)
+                painter.setPen(QPen(QColor(0, 255, 0), line_w)); painter.drawPolygon(QPolygon([QPoint(x1, y1), QPoint(x2, y2), QPoint(x3, y3), QPoint(x4, y4)]))
+            elif self.shape_type == 2: 
                 painter.drawPolygon(QPolygon([QPoint(x, y), QPoint(x+w_box, y), QPoint(x+w_box//2, y+h)]))
-            elif self.shape_type == 3: # Circle
+            elif self.shape_type == 3: 
                 painter.drawEllipse(x, y, w_box, h)
-            elif self.shape_type == 4: # Star
-                painter.drawRect(x, y, w_box, h)
-                painter.drawText(x, y-5, "★ Star")
-                
-            elif self.shape_type == 5: # Parallelogram
-                offset = self.w_bottom
-                offset = max(-w_box + 1, min(offset, w_box - 1)) # 限制偏移量绝对值不超过外框总宽
-                
-                if offset >= 0:
-                    x1, y1 = x, y
-                    x2, y2 = x + w_box - offset, y
-                    x3, y3 = x + w_box, y + h
-                    x4, y4 = x + offset, y + h
-                else:
-                    abs_offset = abs(offset)
-                    x1, y1 = x + abs_offset, y
-                    x2, y2 = x + w_box, y
-                    x3, y3 = x + w_box - abs_offset, y + h
-                    x4, y4 = x, y + h
-                
-                # 绘制外接矩形 (虚线)
-                pen_dash = QPen(QColor(255, 255, 0, 150), line_w, Qt.DashLine)
-                painter.setPen(pen_dash)
-                painter.drawRect(x, y, w_box, h)
-                
-                # 绘制平行四边形实体
-                painter.setPen(QPen(QColor(0, 255, 0), line_w))
-                painter.drawPolygon(QPolygon([QPoint(x1, y1), QPoint(x2, y2), QPoint(x3, y3), QPoint(x4, y4)]))
-
+            elif self.shape_type == 4: 
+                painter.drawRect(x, y, w_box, h); painter.drawText(x, y-5, "★ Star")
+            elif self.shape_type == 5: 
+                offset = self.w_bottom; offset = max(-w_box + 1, min(offset, w_box - 1))
+                if offset >= 0: x1, y1 = x, y; x2, y2 = x + w_box - offset, y; x3, y3 = x + w_box, y + h; x4, y4 = x + offset, y + h
+                else: abs_offset = abs(offset); x1, y1 = x + abs_offset, y; x2, y2 = x + w_box, y; x3, y3 = x + w_box - abs_offset, y + h; x4, y4 = x, y + h
+                pen_dash = QPen(QColor(255, 255, 0, 150), line_w, Qt.DashLine); painter.setPen(pen_dash); painter.drawRect(x, y, w_box, h)
+                painter.setPen(QPen(QColor(0, 255, 0), line_w)); painter.drawPolygon(QPolygon([QPoint(x1, y1), QPoint(x2, y2), QPoint(x3, y3), QPoint(x4, y4)]))
         elif self.mode == "poly" and self.poly_points:
-            painter.setPen(QPen(QColor(0, 255, 255), point_r * 2))
+            painter.setPen(QPen(QColor(0, 255, 255), point_r * 2)); 
             for pt in self.poly_points: painter.drawPoint(pt)
             painter.setPen(QPen(QColor(0, 255, 255), line_w))
             if len(self.poly_points) > 1: painter.drawPolyline(self.poly_points)
-            if len(self.poly_points) == 4:
-                painter.drawLine(self.poly_points[-1], self.poly_points[0])
-                painter.setBrush(QColor(0, 255, 255, 50))
-                painter.drawPolygon(QPolygon(self.poly_points))
+            if len(self.poly_points) == 4: painter.drawLine(self.poly_points[-1], self.poly_points[0]); painter.setBrush(QColor(0, 255, 255, 50)); painter.drawPolygon(QPolygon(self.poly_points))
+
+
+# ========================================================
+# [修改] ModernMessageBox (去除了阴影代码)
+# ========================================================
+class ModernMessageBox(QDialog):
+    def __init__(
+        self,
+        parent,
+        title,
+        message,
+        theme="dark",
+        icon_type="success",
+        ok_text="OK",
+        icon_svg=None,
+    ):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground) # 仍然需要透明背景来实现圆角裁剪
+        self.setModal(True)
+        
+        self.theme = theme
+        pal = THEME_PALETTES.get(theme, THEME_PALETTES["dark"])
+        
+        # 布局
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 1. 背景容器
+        self.container = QWidget()
+        self.container.setObjectName("msg_container")
+        # 样式：背景色 + 边框 + 圆角
+        self.container.setStyleSheet(f"""
+            QWidget#msg_container {{
+                background-color: {pal['bg_panel']};
+                border: 1px solid {pal['border']}; /* 关键：保留边框以区分背景 */
+                border-radius: 16px;
+            }}
+            /* 确保标签背景透明，没有多余边框 */
+            QLabel {{ 
+                background-color: transparent;
+                color: {pal['text_main']}; 
+                border: none;
+            }}
+        """)
+        
+        # === [核心修改]：已删除所有关于 QGraphicsDropShadowEffect 的代码 ===
+        # 这样弹窗就是纯粹的扁平化卡片，没有模糊阴影了
+        
+        inner_layout = QVBoxLayout(self.container)
+        inner_layout.setSpacing(15)
+        inner_layout.setContentsMargins(30, 30, 30, 30)
+
+        # 2. 图标
+        lbl_icon = QLabel()
+        lbl_icon.setAlignment(Qt.AlignCenter)
+        if icon_svg:
+            p = icon_path(icon_svg)
+            ico = QIcon(p) if p else QIcon()
+            pm = ico.pixmap(48, 48)
+            if (not ico.isNull()) and (not pm.isNull()):
+                lbl_icon.setPixmap(pm)
+            else:
+                lbl_icon.setText("✂️")
+                lbl_icon.setStyleSheet("font-size: 48px;")
+        elif icon_type == "success":
+            lbl_icon.setText("✅")
+            lbl_icon.setStyleSheet("font-size: 48px;")
+        elif icon_type == "error":
+            lbl_icon.setText("❌")
+            lbl_icon.setStyleSheet("font-size: 48px;")
+        else:
+            lbl_icon.setText("ℹ️")
+            lbl_icon.setStyleSheet("font-size: 48px;")
+        inner_layout.addWidget(lbl_icon)
+
+        # 3. 标题
+        lbl_title = QLabel(title)
+        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {pal['text_main']}; border: none;")
+        inner_layout.addWidget(lbl_title)
+
+        # 4. 内容
+        lbl_msg = QLabel(message)
+        lbl_msg.setAlignment(Qt.AlignCenter)
+        lbl_msg.setWordWrap(True)
+        lbl_msg.setStyleSheet(f"font-size: 14px; color: {pal['text_sub']}; margin-bottom: 10px; border: none;")
+        inner_layout.addWidget(lbl_msg)
+
+        # 5. 按钮
+        btn_ok = QPushButton(ok_text)
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        # 按钮样式 (复用 CSS 中的胶囊按钮风格)
+        btn_ok.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {pal['success']};
+                color: white;
+                border: none;
+                border-radius: 18px; 
+                padding: 0px; /* 图标按钮我们设了0，文字按钮这里设0没关系，因为有FixedSize */
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            QPushButton:hover {{ background-color: {pal['success_hover']}; }}
+        """)
+        btn_ok.setFixedSize(120, 36)
+        btn_ok.clicked.connect(self.accept)
+        
+        # 按钮居中
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addStretch()
+        inner_layout.addLayout(btn_layout)
+
+        layout.addWidget(self.container)
+        
+        # 设置弹窗大小
+        self.setFixedSize(320, 280)

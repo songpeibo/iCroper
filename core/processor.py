@@ -138,26 +138,34 @@ def apply_crop(img, params):
 
 class CropWorker(QThread):
     progress_updated = Signal(int)
-    finished_signal = Signal(str)
+    finished_signal = Signal(int, int, int, str, bool)
 
     def __init__(self, image_files, output_dir, params):
         super().__init__()
         self.image_files = image_files
         self.output_dir = output_dir
         self.params = params
+        self._stop_requested = False
+
+    def stop(self):
+        self._stop_requested = True
 
     def run(self):
-        if not os.path.exists(self.output_dir): 
-            os.makedirs(self.output_dir)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir, exist_ok=True)
 
-        count = 0
+        processed = 0
+        success = 0
+        failed = 0
         total = len(self.image_files)
         shape_type = self.params.get('shape_type', 0)
         
         prefixes = ["rect_", "trap_", "tri_", "circle_", "star_", "para_"]
         prefix = prefixes[shape_type] if shape_type < len(prefixes) else "crop_"
 
-        for i, file_path in enumerate(self.image_files):
+        for file_path in self.image_files:
+            if self._stop_requested:
+                break
             img = cv_imread_safe(file_path)
             if img is not None:
                 roi = apply_crop(img, self.params)
@@ -168,9 +176,17 @@ class CropWorker(QThread):
                         filename = name + ".png"
                     
                     save_path = os.path.join(self.output_dir, filename)
-                    cv_imwrite_safe(save_path, roi)
-            
-            count += 1
-            self.progress_updated.emit(count)
+                    try:
+                        cv_imwrite_safe(save_path, roi)
+                        success += 1
+                    except Exception:
+                        failed += 1
+                else:
+                    failed += 1
+            else:
+                failed += 1
 
-        self.finished_signal.emit(f"任务完成！\n成功处理 {count}/{total} 张。\n保存在: {self.output_dir}")
+            processed += 1
+            self.progress_updated.emit(processed)
+
+        self.finished_signal.emit(success, processed, failed, self.output_dir, self._stop_requested)
