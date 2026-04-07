@@ -81,6 +81,23 @@ python main.py
 
 ---
 
+## 📥 预编译版本下载 (GitHub Releases)
+
+若不想安装 Python，可直接使用 Release 里附带的 Windows 可执行文件。
+
+1. 打开本仓库的 **Releases** 页面：  
+   [https://github.com/songpeibo/iCroper/releases](https://github.com/songpeibo/iCroper/releases)
+2. 在列表中选择**最新的**一条 Release（或你需要的版本）。
+3. 在 **Assets** 区域下载附件，常见有两种：
+   * **文件夹版（onedir，推荐）**：文件名多为 `iCroper-vx.x.x-win64-onedir.zip` 或类似。  
+     解压后进入文件夹，运行其中的 `iCroper.exe`。请**保留同目录下的 `_internal` 等文件**，不要只拷贝单个 exe。
+   * **单文件版（onefile，可选）**：单个 `iCroper.exe`。拷贝该文件到任意位置即可运行；首次启动可能略慢。
+4. 若浏览器或 Windows 安全中心提示「未知发布者」，请选择「仍要运行」（未签名应用较常见）。
+
+**维护者发布 Release 时请注意：** 创建正式发布前需填写**合法标签名**（例如 `v1.0.0`），不能为空或含空格；可先本地执行 `git tag v1.0.0` 并 `git push origin v1.0.0`，再在网页上选择该标签并上传上述 zip / exe。
+
+---
+
 ## 📖 使用指南 (Usage)
 
 ### 1. 设置路径
