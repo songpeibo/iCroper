@@ -150,25 +150,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -OneFile
 
 ```
 iCroper/
-├── main.py                 # 程序入口（Qt 插件路径、应用图标）
-├── logo.ico                # 应用 / 打包图标
+├── main.py                  # 程序入口（Qt 插件路径、应用图标）
+├── logo.ico                 # 应用 / 打包图标
 ├── requirements.txt
 ├── README.md
 ├── scripts/
-│   └── build.ps1           # PyInstaller 打包脚本
+│   └── build.ps1            # PyInstaller 打包脚本
 ├── config/
-│   ├── settings.py         # 主题样式、扩展名、QSettings 键等
-│   ├── i18n.py             # 中英文文案
-│   └── icons.py            # SVG 图标路径解析（兼容打包）
+│   ├── settings.py          # 主题样式、扩展名、QSettings 键等
+│   ├── i18n.py              # 中英文文案
+│   └── icons.py             # SVG 图标路径解析（兼容打包）
 ├── core/
-│   ├── processor.py        # 裁剪 Worker、批量与取消
-│   └── utils.py            # 中文路径读写、QPixmap 转换等
+│   ├── processor.py         # 裁剪 Worker、批量与取消
+│   └── utils.py             # 中文路径读写、QPixmap 转换等
 ├── resources/
-│   └── icons/              # SVG 图标资源
+│   └── icons/               # SVG 图标资源
 └── ui/
-    ├── main_window.py      # 主窗口逻辑
+    ├── main_window.py       # 主窗口逻辑
     ├── window_components.py # 标题栏、预览框、下拉等组件
-    └── custom_widgets.py   # 交互式预览、消息框等
+    └── custom_widgets.py    # 交互式预览、消息框等
 ```
 
 ---
